@@ -4,7 +4,8 @@ import random
 import os
 import networkx as nx
 import util
-
+import matplotlib.pyplot as plt
+import numpy as np
 
 def approx_markov_chain_steady_state(
     conditional_distribution, N_samples, iterations_between_samples
@@ -103,6 +104,67 @@ def run_pagerank(data_filename, N_samples, iterations_between_samples):
         print("%0.6f: %s" % top[i])
     return steady_state
 
+def kl_divergence(dist1, dist2):
+    """Calculate Kullback-Leibler Divergence between two distributions."""
+    kl_div = 0
+    for state in dist1:
+        if state in dist2 and dist2[state] != 0:
+            kl_div += dist1[state] * np.log(dist1[state] / dist2[state])
+    return kl_div
+
+def plot_kl_divergence():
+    data_filename = "example_data.gml"
+    N_samples = 2500
+    iterations_between_samples = 1000
+    # run_pagerank(data_filename, N_samples, iterations_between_samples)
+    sample_sizes = [128, 256, 512, 1024, 2048, 4096, 8192]
+    divergences = []
+    conditional_distribution = get_graph_distribution(data_filename)
+    for N_samples in sample_sizes:
+        # Run the Markov Chain simulation twice
+        steady_state1 = approx_markov_chain_steady_state(
+            conditional_distribution, N_samples, iterations_between_samples
+        )
+        steady_state2 = approx_markov_chain_steady_state(
+            conditional_distribution, N_samples, iterations_between_samples
+        )
+
+        # Compute the KL divergence and add it to the list
+        divergence = kl_divergence(steady_state1, steady_state2)
+        divergences.append(divergence)
+
+    # Plotting the divergence vs. number of samples
+    plt.figure(figsize=(10, 6))
+    plt.plot(sample_sizes, divergences, marker="o")
+    plt.xlabel("Number of Samples")
+    plt.ylabel("KL Divergence (bits)")
+    plt.title("KL Divergence between Two Empirical Distributions at Different Sample Sizes")
+    plt.grid(True)
+    plt.show()
+
+def create_scatter_plot():
+    # Load the graph from the provided file
+    file_path = "stat.gml"
+    G = nx.read_gml(file_path)
+
+    # Calculate PageRank scores for each node
+    pagerank_scores = nx.pagerank(G)
+
+    # Calculate node-degree scores (in-degree + out-degree) for each node
+    node_degree_scores = {node: G.in_degree(node) + G.out_degree(node) for node in G.nodes}
+
+    # Extracting the scores for plotting
+    pagerank_values = list(pagerank_scores.values())
+    degree_values = list(node_degree_scores.values())
+
+    # Create a scatter plot
+    plt.figure(figsize=(10, 6))
+    plt.scatter(degree_values, pagerank_values, alpha=0.6)
+    plt.title("PageRank vs Node-Degree Scores for Wikipedia Pages")
+    plt.xlabel("Node-Degree Score (In-Degree + Out-Degree)")
+    plt.ylabel("PageRank Score")
+    plt.grid(True)
+    plt.show()
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
